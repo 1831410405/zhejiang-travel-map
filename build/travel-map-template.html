@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>浙江旅行地图</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><text y=%27.9em%27 font-size=%2790%27>🗺️</text></svg>">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;
+background:linear-gradient(160deg,#F0F5FF 0%,#FFF5F5 30%,#F0FFF4 60%,#F0F5FF 100%);color:#2D3748;min-height:100vh;overflow-x:hidden}
+
+/* Header */
+.hdr{background:linear-gradient(135deg,#667EEA 0%,#764BA2 50%,#F093FB 100%);color:#fff;padding:14px 24px;
+display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;
+box-shadow:0 4px 20px rgba(102,126,234,.25)}
+.hdr h1{font-size:20px;font-weight:800;letter-spacing:1px}
+.hdr-sub{font-size:11px;opacity:.85;margin-top:2px}
+.stats{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.badge{background:rgba(255,255,255,.2);border-radius:12px;padding:6px 14px;text-align:center;
+backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.15)}
+.badge b{font-size:18px;display:block;line-height:1.2}
+.badge span{font-size:10px;opacity:.85}
+.bar{width:56px;height:4px;background:rgba(255,255,255,.2);border-radius:3px;margin-top:3px}
+.bar-fill{height:100%;background:linear-gradient(90deg,#FDE68A,#FCA5A5);border-radius:3px;transition:width .6s ease}
+.btn-rst{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:20px;
+color:#fff;padding:5px 14px;font-size:11px;cursor:pointer;transition:all .2s}
+.btn-rst:hover{background:rgba(255,255,255,.3)}
+
+/* Layout */
+.main{display:flex;min-height:calc(100vh - 56px)}
+.map-col{flex:1;padding:20px 24px;display:flex;flex-direction:column;align-items:center;overflow-y:auto}
+.panel{width:400px;min-width:360px;background:#fff;border-left:1px solid #E8ECF4;
+overflow-y:auto;box-shadow:-4px 0 24px rgba(0,0,0,.04)}
+.panel.hide{display:none}
+
+/* Breadcrumb */
+.bc{display:flex;gap:6px;align-items:center;margin-bottom:16px;font-size:13px;color:#94A3B8;flex-wrap:wrap}
+.bc a{color:#667EEA;cursor:pointer;font-weight:600;text-decoration:none;transition:color .15s}
+.bc a:hover{color:#764BA2}
+
+/* Cards */
+.card{background:#fff;border-radius:18px;box-shadow:0 2px 12px rgba(102,126,234,.08);padding:22px;margin-bottom:16px;
+border:1px solid rgba(102,126,234,.06)}
+.card h2{font-size:20px;font-weight:700;margin-bottom:4px;background:linear-gradient(135deg,#667EEA,#764BA2);
+-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.card p{font-size:13px;color:#64748B;line-height:1.7}
+
+/* Tags */
+.tag{display:inline-block;padding:4px 12px;border-radius:20px;font-size:12px;margin:0 5px 6px 0;font-weight:500;
+transition:transform .15s}
+.tag:hover{transform:translateY(-1px)}
+.tag-b{background:linear-gradient(135deg,#EEF2FF,#E0E7FF);color:#4338CA;border:1px solid #C7D2FE}
+.tag-o{background:linear-gradient(135deg,#FFF7ED,#FFEDD5);color:#C2410C;border:1px solid #FED7AA}
+
+.sec-title{font-size:13px;font-weight:700;color:#667EEA;margin-bottom:10px;
+display:flex;align-items:center;gap:6px}
+
+/* SVG Map */
+.map-wrap{width:100%;max-width:800px;position:relative}
+.map-svg{width:100%;display:block}
+.city-path{cursor:pointer;transition:all .2s ease;stroke:#B8C5D6;stroke-width:1;stroke-linejoin:round;stroke-linecap:round}
+.city-path:hover{stroke:#667EEA;stroke-width:2.2;filter:brightness(0.95)}
+.city-label{pointer-events:none;font-weight:700;fill:#2D3748;text-anchor:middle;dominant-baseline:central}
+.city-label-bg{pointer-events:none}
+
+.dist-path{cursor:pointer;transition:all .2s ease;stroke:#CBD5E1;stroke-width:.7;stroke-linejoin:round;stroke-linecap:round}
+.dist-path:hover{stroke:#667EEA;stroke-width:1.8;filter:brightness(0.93)}
+.dist-label{pointer-events:none;font-weight:600;fill:#374151;text-anchor:middle;dominant-baseline:central;font-size:11px}
+
+/* Detail Panel */
+.detail-inner{padding:20px}
+.detail-top{border:2px solid;border-radius:18px;padding:20px 22px;position:relative;
+overflow:hidden;margin-bottom:16px;background:#fff;box-shadow:0 2px 12px rgba(102,126,234,.08)}
+.detail-accent{position:absolute;top:0;left:0;right:0;height:4px;border-radius:18px 18px 0 0}
+.detail-name{font-size:22px;font-weight:800;margin:4px 0 3px}
+.detail-meta{font-size:12px;color:#64748B;margin-bottom:14px}
+
+/* Buttons */
+.btn-v{padding:9px 20px;border-radius:22px;border:none;cursor:pointer;font-weight:700;font-size:13px;
+background:linear-gradient(135deg,#667EEA,#764BA2);color:#fff;box-shadow:0 3px 12px rgba(102,126,234,.3);
+transition:all .2s}
+.btn-v:hover{box-shadow:0 5px 16px rgba(102,126,234,.4);transform:translateY(-1px)}
+.btn-v:active{transform:scale(.97)}
+.btn-s{padding:9px 18px;border-radius:22px;border:none;cursor:pointer;font-weight:600;font-size:13px;
+background:#F1F5F9;color:#64748B;transition:all .15s}
+.btn-s:hover{background:#E2E8F0}
+
+/* Progress dots */
+.prog{display:flex;gap:5px;margin-top:14px}
+.prog-s{flex:1;height:5px;border-radius:3px;transition:background .3s}
+
+/* Spots */
+.spot{display:flex;align-items:center;gap:10px;padding:10px 14px;background:linear-gradient(135deg,#F8FAFF,#F0F5FF);
+border-radius:12px;margin-bottom:7px;border:1px solid #E8ECF4}
+.spot-n{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#667EEA,#764BA2);
+display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
+.spot-t{font-size:13px;font-weight:500;color:#374151}
+
+/* Tips */
+.tip{background:linear-gradient(135deg,#F0F9FF,#EFF6FF);border:1px solid #BAE6FD;border-radius:18px;padding:18px 22px;margin-bottom:16px}
+.tip h3{font-size:13px;font-weight:700;color:#0369A1;margin-bottom:8px}
+.tip p{font-size:12px;line-height:1.8;color:#475569}
+
+/* Notes */
+.note-area{width:100%;min-height:80px;border:1.5px solid #E2E8F0;border-radius:14px;padding:12px 14px;
+font-size:13px;line-height:1.6;resize:vertical;font-family:inherit;color:#374151;
+background:#FAFBFF;transition:border-color .2s}
+.note-area:focus{outline:none;border-color:#667EEA;background:#fff}
+.note-imgs{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.note-img{width:72px;height:72px;border-radius:10px;object-fit:cover;border:2px solid #E2E8F0;cursor:pointer;
+transition:transform .15s}
+.note-img:hover{transform:scale(1.08)}
+.note-add{width:72px;height:72px;border-radius:10px;border:2px dashed #CBD5E1;display:flex;align-items:center;
+justify-content:center;cursor:pointer;color:#94A3B8;font-size:24px;transition:all .2s;background:#FAFBFF}
+.note-add:hover{border-color:#667EEA;color:#667EEA;background:#F0F5FF}
+
+/* Empty */
+.empty{text-align:center;padding:50px 30px;color:#94A3B8}
+.empty-icon{font-size:48px;margin-bottom:12px}
+
+/* Toolbar */
+.toolbar{display:flex;gap:8px;margin-bottom:14px}
+.tb{padding:6px 14px;border-radius:20px;border:1.5px solid #E2E8F0;background:#fff;
+color:#64748B;font-size:11px;cursor:pointer;font-weight:500;transition:all .15s}
+.tb:hover{background:#F0F5FF;border-color:#667EEA;color:#667EEA}
+
+/* Legend */
+.legend{display:flex;gap:14px;margin-top:16px;flex-wrap:wrap;justify-content:center}
+.leg{display:flex;align-items:center;gap:5px;font-size:11px;color:#64748B}
+.leg-dot{width:14px;height:14px;border-radius:4px;border:2px solid}
+
+/* District grid cards */
+.dist-card{padding:14px 16px;border-radius:14px;cursor:pointer;transition:all .2s;
+border:2px solid transparent;display:flex;justify-content:space-between;align-items:center}
+.dist-card:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.06)}
+
+/* Lightbox */
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:999;display:flex;align-items:center;
+justify-content:center;cursor:pointer}
+.lightbox img{max-width:90%;max-height:90%;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,.4)}
+
+@media(max-width:800px){
+.main{flex-direction:column}
+.panel{width:100%;min-width:0;border-left:none;border-top:1px solid #E8ECF4}
+.hdr{padding:12px 16px;flex-wrap:wrap;gap:8px}
+.hdr h1{font-size:17px}
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script type="text/babel" data-presets="react">
+const {useState, useMemo, useCallback, useRef} = React;
+
+/* ═══ DATA ═══ */
+const travelData = __TRAVEL_DATA__;
+const provinceGeo = __PROVINCE_GEO__;
+const cityGeos = __CITY_GEOS__;
+
+/* ═══ COLORS — 6 levels with stronger contrast ═══ */
+const VC = [
+  {bg:"#F8FAFC", border:"#E2E8F0", fill:"#F1F5F9", label:"还没去过", emoji:""},
+  {bg:"#DBEAFE", border:"#93C5FD", fill:"#BFDBFE", label:"初探", emoji:"🌱"},
+  {bg:"#A5D8FF", border:"#4DABF7", fill:"#74C0FC", label:"二刷", emoji:"🌿"},
+  {bg:"#74B9FF", border:"#228BE6", fill:"#4DABF7", label:"三顾", emoji:"🌳"},
+  {bg:"#4C6EF5", border:"#3B5BDB", fill:"#3B5BDB", label:"常客", emoji:"⭐"},
+  {bg:"#3B44C7", border:"#2B34A0", fill:"#2B34A0", label:"老朋友", emoji:"👑"}
+];
+const gc = n => VC[Math.min(n, VC.length - 1)];
+
+/* City color scale based on visited ratio */
+const cityFill = (ratio) => {
+  if (ratio <= 0) return '#FFFFFF';
+  if (ratio < 0.2) return 'rgba(107,126,234,0.08)';
+  if (ratio < 0.4) return 'rgba(107,126,234,0.18)';
+  if (ratio < 0.6) return 'rgba(107,126,234,0.32)';
+  if (ratio < 0.8) return 'rgba(107,126,234,0.48)';
+  if (ratio < 1.0) return 'rgba(107,126,234,0.62)';
+  return 'rgba(59,91,219,0.72)';
+};
+
+/* ═══ PROJECTION ═══ */
+function getBounds(geojson) {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  function walk(coords) {
+    if (typeof coords[0] === 'number') {
+      if (coords[0] < minX) minX = coords[0];
+      if (coords[0] > maxX) maxX = coords[0];
+      if (coords[1] < minY) minY = coords[1];
+      if (coords[1] > maxY) maxY = coords[1];
+    } else { coords.forEach(walk); }
+  }
+  geojson.features.forEach(f => walk(f.geometry.coordinates));
+  return {minX, minY, maxX, maxY};
+}
+
+function geoToSvg(geojson, W, H, pad) {
+  const b = getBounds(geojson);
+  const gw = b.maxX - b.minX || 1;
+  const gh = b.maxY - b.minY || 1;
+  const scale = Math.min((W - pad * 2) / gw, (H - pad * 2) / gh);
+  const ox = pad + ((W - pad * 2) - gw * scale) / 2;
+  const oy = pad + ((H - pad * 2) - gh * scale) / 2;
+  const px = (lon) => ox + (lon - b.minX) * scale;
+  const py = (lat) => oy + (b.maxY - lat) * scale;
+  function toPath(coords) {
+    let d = '';
+    for (const ring of coords) {
+      const pts = ring.map(p => [px(p[0]), py(p[1])]);
+      if (pts.length < 4) {
+        d += 'M' + pts.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join('L') + 'Z';
+        continue;
+      }
+      const n = pts.length;
+      const tension = 0.25;
+      const alpha = (1 - tension) / 6;
+      d += 'M' + pts[0][0].toFixed(1) + ',' + pts[0][1].toFixed(1);
+      for (let i = 0; i < n; i++) {
+        const p0 = pts[(i - 1 + n) % n];
+        const p1 = pts[i];
+        const p2 = pts[(i + 1) % n];
+        const p3 = pts[(i + 2) % n];
+        const cp1x = p1[0] + alpha * (p2[0] - p0[0]);
+        const cp1y = p1[1] + alpha * (p2[1] - p0[1]);
+        const cp2x = p2[0] - alpha * (p3[0] - p1[0]);
+        const cp2y = p2[1] - alpha * (p3[1] - p1[1]);
+        d += 'C' + cp1x.toFixed(1) + ',' + cp1y.toFixed(1) + ',' +
+             cp2x.toFixed(1) + ',' + cp2y.toFixed(1) + ',' +
+             p2[0].toFixed(1) + ',' + p2[1].toFixed(1);
+      }
+      d += 'Z';
+    }
+    return d;
+  }
+  function featurePath(feature) {
+    const g = feature.geometry;
+    if (g.type === 'Polygon') return toPath(g.coordinates);
+    if (g.type === 'MultiPolygon') return g.coordinates.map(toPath).join('');
+    return '';
+  }
+  function centroid(feature) {
+    let sx = 0, sy = 0, n = 0;
+    function walk(c) {
+      if (typeof c[0] === 'number') { sx += c[0]; sy += c[1]; n++; }
+      else c.forEach(walk);
+    }
+    walk(feature.geometry.coordinates);
+    return n ? [px(sx / n), py(sy / n)] : [W / 2, H / 2];
+  }
+  return {featurePath, centroid, bounds: b, scale};
+}
+
+/* ═══ STORAGE ═══ */
+const SK = 'zj_travel_v3';
+const NK = 'zj_notes_v1';
+const loadV = () => { try { return JSON.parse(localStorage.getItem(SK)) || {}; } catch { return {}; } };
+const saveV = v => { try { localStorage.setItem(SK, JSON.stringify(v)); } catch {} };
+const loadN = () => { try { return JSON.parse(localStorage.getItem(NK)) || {}; } catch { return {}; } };
+const saveN = n => { try { localStorage.setItem(NK, JSON.stringify(n)); } catch {} };
+
+/* ═══ SVG EXPORT ═══ */
+function exportMap(svgEl, filename) {
+  const clone = svgEl.cloneNode(true);
+  if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  const vb = svgEl.viewBox.baseVal;
+  const sc = 3;
+  clone.setAttribute('width', vb.width * sc);
+  clone.setAttribute('height', vb.height * sc);
+  const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+  style.textContent = 'text{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}';
+  clone.insertBefore(style, clone.firstChild);
+  const str = new XMLSerializer().serializeToString(clone);
+  const img = new Image();
+  img.onload = function() {
+    const cvs = document.createElement('canvas');
+    cvs.width = vb.width * sc; cvs.height = vb.height * sc;
+    const ctx = cvs.getContext('2d');
+    ctx.fillStyle = '#F0F5FF'; ctx.fillRect(0, 0, cvs.width, cvs.height);
+    ctx.drawImage(img, 0, 0, cvs.width, cvs.height);
+    cvs.toBlob(function(blob) {
+      const a = document.createElement('a');
+      a.download = filename + '.png'; a.href = URL.createObjectURL(blob);
+      a.click(); setTimeout(function() { URL.revokeObjectURL(a.href); }, 2000);
+    }, 'image/png');
+  };
+  img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(str)));
+}
+
+/* ═══ DISTRICT NAME MATCHING ═══ */
+function normalizeName(name) {
+  return name.replace(/畲族自治县$/, '').replace(/自治区$/, '').replace(/[区县市]$/, '');
+}
+function findCity(featureName) {
+  return travelData.find(c => {
+    const cShort = c.name.replace('市', '');
+    return featureName.includes(cShort) || c.name.includes(featureName);
+  });
+}
+function findDist(city, featureName) {
+  const fNorm = normalizeName(featureName);
+  return city.districts.find(d => {
+    const dNorm = normalizeName(d.name);
+    return featureName.includes(dNorm) || dNorm.includes(fNorm) || d.name.includes(featureName);
+  });
+}
+
+/* ═══ APP ═══ */
+function App() {
+  const [selCity, setSelCity] = useState(null);
+  const [selDist, setSelDist] = useState(null);
+  const [visits, setVisitsRaw] = useState(loadV);
+  const [notes, setNotesRaw] = useState(loadN);
+  const [lightbox, setLightbox] = useState(null);
+
+  const setVisits = useCallback(fn => {
+    setVisitsRaw(prev => { const next = typeof fn === 'function' ? fn(prev) : fn; saveV(next); return next; });
+  }, []);
+  const setNotes = useCallback(fn => {
+    setNotesRaw(prev => { const next = typeof fn === 'function' ? fn(prev) : fn; saveN(next); return next; });
+  }, []);
+
+  const gv = useCallback(k => visits[k] || 0, [visits]);
+  const cycleV = useCallback(k => setVisits(p => ({...p, [k]: Math.min((p[k] || 0) + 1, 5)})), [setVisits]);
+  const resetOne = useCallback(k => setVisits(p => ({...p, [k]: 0})), [setVisits]);
+  const resetAll = useCallback(() => { if (confirm("确定重置所有脚印记录吗？")) setVisits({}); }, [setVisits]);
+
+  const getNote = useCallback(k => notes[k] || {text: '', imgs: []}, [notes]);
+  const updateNoteText = useCallback((k, text) => {
+    setNotes(p => ({...p, [k]: {...(p[k] || {imgs: []}), text}}));
+  }, [setNotes]);
+  const addNoteImg = useCallback((k, dataUrl) => {
+    setNotes(p => {
+      const cur = p[k] || {text: '', imgs: []};
+      return {...p, [k]: {...cur, imgs: [...cur.imgs, dataUrl]}};
+    });
+  }, [setNotes]);
+  const removeNoteImg = useCallback((k, idx) => {
+    setNotes(p => {
+      const cur = p[k] || {text: '', imgs: []};
+      const imgs = cur.imgs.filter((_, i) => i !== idx);
+      return {...p, [k]: {...cur, imgs}};
+    });
+  }, [setNotes]);
+
+  const stats = useMemo(() => {
+    let td = 0, vis = 0, tot = 0;
+    travelData.forEach(c => c.districts.forEach(d => {
+      td++;
+      const v = gv(c.id + '_' + d.name);
+      if (v > 0) vis++;
+      tot += v;
+    }));
+    return {td, vis, tot, pct: td ? Math.round(vis / td * 100) : 0};
+  }, [visits, gv]);
+
+  const cityStats = useCallback(c => {
+    const v = c.districts.filter(d => gv(c.id + '_' + d.name) > 0).length;
+    return {visited: v, total: c.districts.length, ratio: c.districts.length ? v / c.districts.length : 0};
+  }, [gv]);
+
+  const exportData = useCallback(() => {
+    const data = {visits, notes};
+    const blob = new Blob([JSON.stringify(data, null, 2)], {type: "application/json"});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = 'zj_travel_backup.json'; a.click();
+  }, [visits, notes]);
+
+  const importData = useCallback(() => {
+    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.json';
+    inp.onchange = e => {
+      const f = e.target.files[0]; if (!f) return;
+      const r = new FileReader();
+      r.onload = ev => {
+        try {
+          const data = JSON.parse(ev.target.result);
+          if (data.visits) setVisits(data.visits);
+          if (data.notes) setNotes(data.notes);
+          alert("导入成功！");
+        } catch { alert("文件格式错误"); }
+      };
+      r.readAsText(f);
+    };
+    inp.click();
+  }, [setVisits, setNotes]);
+
+  /* ── Province SVG ── */
+  const provProj = useMemo(() => geoToSvg(provinceGeo, 800, 700, 30), []);
+
+  const ProvinceView = useCallback(() => (
+    <div style={{width: "100%", maxWidth: "800px"}}>
+      <h2 style={{fontSize: "19px", fontWeight: 800, textAlign: "center", marginBottom: "4px",
+        background: "linear-gradient(135deg,#667EEA,#764BA2)", WebkitBackgroundClip: "text",
+        WebkitTextFillColor: "transparent"}}>浙江省旅行足迹</h2>
+      <p style={{textAlign: "center", color: "#94A3B8", fontSize: "12px", marginBottom: "18px"}}>
+        点击城市区域开始探索 · 走过的地方颜色会越来越深</p>
+      <div className="map-wrap">
+        <svg ref={el => { if (el) window.__provSvg = el; }} viewBox="0 0 800 700" className="map-svg">
+          <rect width="800" height="700" fill="#F0F5FF" rx="16"/>
+          <text x="780" y="688" fontSize="11" fill="#B8C5D6" fontWeight="500" textAnchor="end">东海</text>
+          {provinceGeo.features.map((f, i) => {
+            const city = findCity(f.properties.name);
+            const cs = city ? cityStats(city) : {visited: 0, total: 0, ratio: 0};
+            const d = provProj.featurePath(f);
+            const [cx, cy] = provProj.centroid(f);
+            const fc = cityFill(cs.ratio);
+            const sc = cs.ratio > 0.5 ? "#4C6EF5" : "#B8C5D6";
+            return (
+              <g key={f.properties.adcode || i} onClick={() => city && setSelCity(city)}>
+                <path d={d} fill={fc} className="city-path" strokeWidth={cs.ratio > 0.5 ? 1.6 : 1} stroke={sc}/>
+                <text x={cx} y={cy - 2} className="city-label" fontSize="13">{f.properties.name}</text>
+                {cs.visited > 0 && <text x={cx} y={cy + 15} className="city-label" fontSize="10" fill="#667EEA" fontWeight="600">
+                  {cs.visited}/{cs.total}
+                </text>}
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+      <div style={{textAlign: "center", margin: "12px 0"}}>
+        <button className="tb" onClick={() => { if (window.__provSvg) exportMap(window.__provSvg, '浙江省旅行足迹'); }}>
+          导出地图图片
+        </button>
+      </div>
+      <div className="legend">
+        {VC.map((c, i) => <div key={i} className="leg">
+          <div className="leg-dot" style={{background: c.fill, borderColor: c.border}}/>
+          <span>{c.emoji} {c.label}</span>
+        </div>)}
+      </div>
+    </div>
+  ), [provProj, cityStats, setSelCity]);
+
+  /* ── City View (districts) ── */
+  const CityView = useCallback(({city}) => {
+    const geoKey = city.name;
+    const geo = cityGeos[geoKey];
+    const cs = cityStats(city);
+    if (!geo || !geo.features.length) {
+      return <div className="card"><p>暂无区县边界数据</p></div>;
+    }
+    const proj = geoToSvg(geo, 800, 600, 25);
+    return (
+      <div style={{width: "100%", maxWidth: "800px"}}>
+        <div className="bc">
+          <a onClick={() => {setSelCity(null); setSelDist(null);}}>浙江省</a>
+          <span style={{color: "#CBD5E1"}}>/</span>
+          <span style={{fontWeight: 700, color: "#2D3748"}}>{city.name}</span>
+        </div>
+        <div className="card">
+          <div style={{display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10}}>
+            <div style={{flex: 1, minWidth: "200px"}}>
+              <h2>{city.name}</h2>
+              <p>{city.desc}</p>
+            </div>
+            <div style={{background: "linear-gradient(135deg,#EEF2FF,#E0E7FF)", borderRadius: 14, padding: "10px 18px", textAlign: "center", flexShrink: 0, border: "1px solid #C7D2FE"}}>
+              <div style={{fontSize: 20, fontWeight: 800, color: "#4C6EF5"}}>{cs.visited}<span style={{fontSize: 13, color: "#94A3B8"}}>/{cs.total}</span></div>
+              <div style={{fontSize: 10, color: "#667EEA", fontWeight: 600}}>已探索</div>
+            </div>
+          </div>
+          <div style={{marginTop: 12}}>
+            <div className="sec-title">景点名片</div>
+            <div>{city.attractions.map(a => <span key={a} className="tag tag-b">{a}</span>)}</div>
+          </div>
+          <div style={{marginTop: 8}}>
+            <div className="sec-title">特色美食</div>
+            <div>{city.food.map(f => <span key={f} className="tag tag-o">{f}</span>)}</div>
+          </div>
+        </div>
+
+        <h3 style={{fontSize: "15px", fontWeight: 700, margin: "18px 0 10px", color: "#2D3748"}}>
+          区县地图 <span style={{fontSize: 12, fontWeight: 400, color: "#94A3B8"}}>· 点击查看详情 · 双击留脚印</span>
+        </h3>
+        <div className="map-wrap">
+          <svg ref={el => { if (el) window.__citySvg = el; }} viewBox="0 0 800 600" className="map-svg">
+            <rect width="800" height="600" fill="#F0F5FF" rx="12"/>
+            {geo.features.map((f, i) => {
+              const dist = findDist(city, f.properties.name);
+              const k = dist ? city.id + '_' + dist.name : null;
+              const v = k ? gv(k) : 0;
+              const c = gc(v);
+              const d = proj.featurePath(f);
+              const [cx, cy] = proj.centroid(f);
+              return (
+                <g key={f.properties.adcode || i}
+                   onClick={() => dist && setSelDist(dist)}
+                   onDoubleClick={e => { e.stopPropagation(); if (k) cycleV(k); }}>
+                  <path d={d} fill={c.fill} className="dist-path"
+                    stroke={v > 0 ? c.border : "#CBD5E1"} strokeWidth={v > 0 ? 1.4 : 0.7}/>
+                  <text x={cx} y={cy} className="dist-label">{f.properties.name}</text>
+                  {v > 0 && <text x={cx} y={cy + 15} className="dist-label" fontSize="10" fill={c.border} fontWeight="700">
+                    {c.emoji} {v}
+                  </text>}
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+        <div style={{textAlign: "center", margin: "12px 0"}}>
+          <button className="tb" onClick={() => { if (window.__citySvg) exportMap(window.__citySvg, city.name + '区县地图'); }}>
+            导出地图图片
+          </button>
+        </div>
+
+        <h3 style={{fontSize: "15px", fontWeight: 700, margin: "22px 0 10px", color: "#2D3748"}}>区县列表</h3>
+        <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(210px,1fr))", gap: 10}}>
+          {city.districts.map(d => {
+            const k = city.id + '_' + d.name, v = gv(k), c = gc(v);
+            return (
+              <div key={d.name} onClick={() => setSelDist(d)}
+                onDoubleClick={e => { e.stopPropagation(); cycleV(k); }}
+                className="dist-card"
+                style={{background: c.bg, border: `2px solid ${v > 0 ? c.border : "transparent"}`}}>
+                <div>
+                  <div style={{fontWeight: 700, fontSize: 14, color: "#2D3748"}}>{c.emoji} {d.name}</div>
+                  <div style={{fontSize: 11, color: "#94A3B8", marginTop: 3}}>{d.att.slice(0, 2).join(" / ")}</div>
+                </div>
+                {v > 0 && <div style={{background: `linear-gradient(135deg,${c.border},${c.fill})`, color: "#fff",
+                  borderRadius: 20, minWidth: 28, height: 28, display: "flex", alignItems: "center",
+                  justifyContent: "center", fontSize: 12, fontWeight: 700, padding: "0 8px", flexShrink: 0}}>{v}</div>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }, [cityStats, gv, cycleV, setSelCity, setSelDist]);
+
+  /* ── Image upload helper ── */
+  const handleImgUpload = useCallback((k) => {
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = true;
+    inp.onchange = e => {
+      Array.from(e.target.files).forEach(file => {
+        if (file.size > 2 * 1024 * 1024) { alert("图片不能超过 2MB"); return; }
+        const r = new FileReader();
+        r.onload = ev => addNoteImg(k, ev.target.result);
+        r.readAsDataURL(file);
+      });
+    };
+    inp.click();
+  }, [addNoteImg]);
+
+  /* ── Detail Panel ── */
+  const DetailPanel = useCallback(() => {
+    if (!selDist || !selCity) return (
+      <div className="empty">
+        <div className="empty-icon">🗺️</div>
+        <div style={{fontSize: 15, fontWeight: 700, color: "#667EEA", marginBottom: 6}}>选一个区县看看</div>
+        <div style={{fontSize: 12, color: "#94A3B8"}}>点击地图上的区县<br/>查看攻略和旅行笔记</div>
+      </div>
+    );
+    const city = selCity, d = selDist;
+    const k = city.id + '_' + d.name, v = gv(k), c = gc(v);
+    const note = getNote(k);
+    return (
+      <div className="detail-inner">
+        <div className="bc">
+          <a onClick={() => {setSelCity(null); setSelDist(null);}}>浙江省</a>
+          <span style={{color: "#CBD5E1"}}>/</span>
+          <a onClick={() => setSelDist(null)}>{city.name}</a>
+          <span style={{color: "#CBD5E1"}}>/</span>
+          <span style={{fontWeight: 700, color: "#2D3748"}}>{d.name}</span>
+        </div>
+        <div className="detail-top" style={{borderColor: c.border}}>
+          <div className="detail-accent" style={{background: v > 0 ? `linear-gradient(90deg,${c.border},#764BA2)` : "#E2E8F0"}}/>
+          <h2 className="detail-name">{c.emoji} {d.name}</h2>
+          <p className="detail-meta">{city.name} · {c.label}</p>
+          <div style={{display: "flex", gap: 8, flexWrap: "wrap"}}>
+            <button className="btn-v" onClick={() => cycleV(k)}>
+              {v === 0 ? "留下脚印" : v >= 5 ? "已是老朋友" : `第 ${v + 1} 次打卡`}
+            </button>
+            {v > 0 && <button className="btn-s" onClick={() => resetOne(k)}>清除脚印</button>}
+          </div>
+          <div className="prog">
+            {[0, 1, 2, 3, 4].map(i => <div key={i} className="prog-s"
+              style={{background: i < v ? gc(i + 1).border : "#E2E8F0"}}/>)}
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="sec-title">必玩景点</div>
+          {d.att.map((a, i) => <div key={a} className="spot"><div className="spot-n">{i + 1}</div><span className="spot-t">{a}</span></div>)}
+        </div>
+
+        <div className="card">
+          <div className="sec-title">特色美食</div>
+          <div>{d.food.map(f => <span key={f} className="tag tag-o">{f}</span>)}</div>
+        </div>
+
+        {/* Travel Notes */}
+        <div className="card">
+          <div className="sec-title">旅行笔记</div>
+          <textarea className="note-area" placeholder="写下你的旅行回忆、攻略、心得..."
+            value={note.text} onChange={e => updateNoteText(k, e.target.value)}/>
+          <div className="note-imgs">
+            {note.imgs.map((img, i) => (
+              <div key={i} style={{position: "relative", display: "inline-block"}}>
+                <img src={img} className="note-img" onClick={() => setLightbox(img)}/>
+                <span onClick={() => removeNoteImg(k, i)}
+                  style={{position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%",
+                    background: "#EF4444", color: "#fff", fontSize: 12, display: "flex", alignItems: "center",
+                    justifyContent: "center", cursor: "pointer", fontWeight: 700, border: "2px solid #fff"}}>x</span>
+              </div>
+            ))}
+            <div className="note-add" onClick={() => handleImgUpload(k)}>+</div>
+          </div>
+        </div>
+
+        <div className="tip">
+          <h3>旅行小贴士</h3>
+          <p>{d.name}隶属于{city.name}，共有 <strong>{d.att.length}</strong> 个推荐景点和 <strong>{d.food.length}</strong> 种特色美食。
+          推荐优先打卡 <strong>{d.att[0]}</strong>，再品尝地道的 <strong>{d.food[0]}</strong>。
+          {d.att.length > 3 ? "景点较多，建议安排 2-3 天深度游览。" : "适合安排 1 天轻松游。"}
+          春秋两季是最佳旅行时节。</p>
+        </div>
+      </div>
+    );
+  }, [selCity, selDist, gv, cycleV, resetOne, setSelCity, setSelDist, getNote, updateNoteText, handleImgUpload, removeNoteImg]);
+
+  return (
+    <div>
+      <header className="hdr">
+        <div>
+          <h1>浙江旅行地图</h1>
+          <div className="hdr-sub">探索 11 座城市 · {stats.td} 个区县 · 记录每一次出发</div>
+        </div>
+        <div className="stats">
+          <div className="badge"><b>{stats.vis}</b><span>已打卡</span></div>
+          <div className="badge"><b>{stats.tot}</b><span>总足迹</span></div>
+          <div className="badge">
+            <b>{stats.pct}%</b><span>探索进度</span>
+            <div className="bar"><div className="bar-fill" style={{width: stats.pct + '%'}}/></div>
+          </div>
+          {stats.tot > 0 && <button className="btn-rst" onClick={resetAll}>重置</button>}
+        </div>
+      </header>
+      <div className="main">
+        <div className="map-col">
+          <div className="toolbar">
+            <button className="tb" onClick={exportData}>导出数据</button>
+            <button className="tb" onClick={importData}>导入数据</button>
+          </div>
+          {selCity ? <CityView city={selCity}/> : <ProvinceView/>}
+        </div>
+        <div className={`panel ${selCity ? "" : "hide"}`}>
+          {selCity && <DetailPanel/>}
+        </div>
+      </div>
+      {lightbox && <div className="lightbox" onClick={() => setLightbox(null)}>
+        <img src={lightbox}/>
+      </div>}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
